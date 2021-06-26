@@ -9,13 +9,14 @@ precedence_op_names = {
   '<': 'menor',
   '=': 'igual'
 }
-f_g_functions = {'f': {}, 'g': {}}
+terminal_symbols = {}
+f_g_functions = None
 
 def is_ascii(string: str) -> bool:
   """
     checks if string is an ascii string
   """
-  return all(ord(char) < 128 for char in string)
+  return all(ord(char) < 126 for char in string)
 
 def check_non_terminal(symbol: str) -> bool:
   """
@@ -32,12 +33,12 @@ def check_terminal(symbol: str) -> bool:
     an ascii string and should be lowercase.
   """
 
-  # check if contains uppercase letters
-  for char in symbol:
-    if char.isalpha() and char.isupper():
-      return False
+  if len(symbol)  != 1:
+    return False
 
-  return all(char != '$' for char in symbol) and is_ascii(symbol)
+  is_lower = ord(symbol) < 65 or ord(symbol) > 90
+
+  return symbol != '$' and is_ascii(symbol) and is_lower
 
 def check_op(symbol: str) -> bool:
   """
@@ -63,41 +64,56 @@ def define_rule(args: list):
 
   # warning if defining a lambda production
   if not len(symbols):
-    print(f'WARNING: La regla ${non_terminal} -> lambda" debe ser inicializada'+\
+    print(f'WARNING: La regla {non_terminal} -> lambda" debe ser inicializada'+\
            'como la regla inicial, ya que es una lambda producción.')
 
-  rule_str = ' '.join(symbols)
+  rule_str = ''.join(symbols)
 
-  # check if first symbol is terminal or non-terminal symbol.
-  if not check_non_terminal(symbols[0]) and not check_terminal(symbols[0]):
-    print(f'ERROR: La regla "{non_terminal} -> {rule_str}" ' + \
-            'no corresponde a una gramática de operadores.')
-    return    
+  new_terminals = {}
 
-  # take each pair (if exists) and review that there are no 2 or more 
-  # consecutive non-terminal symbols.
-  # also uses the cycle to check that all of them are terminals or non-terminals
-  for index in range(1, len(symbols)):
-
-    # take the current and the previous one
-    current = symbols[index]
-    prev = symbols[index - 1]
-
-    # if it is a non terminal, previous one can't be a non-terminal.
-    if check_non_terminal(current):
-      if check_non_terminal(prev):
+  if len(symbols):
+    # check if first symbol is terminal or non-terminal symbol.
+    if not check_non_terminal(symbols[0]): 
+      if not check_terminal(symbols[0]):
         print(f'ERROR: La regla "{non_terminal} -> {rule_str}" ' + \
-               'no corresponde a una gramática de operadores.')
+                'no corresponde a una gramática de operadores.')
+        return    
+      else:
+        new_terminals[symbols[0]] = True
+
+    # take each pair (if exists) and review that there are no 2 or more 
+    # consecutive non-terminal symbols.
+    # also uses the cycle to check that all of them are terminals or non-terminals
+    for index in range(1, len(symbols)):
+
+      # take the current and the previous one
+      current = symbols[index]
+      prev = symbols[index - 1]
+
+      # if it is a non terminal, previous one can't be a non-terminal.
+      if check_non_terminal(current):
+        if check_non_terminal(prev):
+          print(f'ERROR: La regla "{non_terminal} -> {rule_str}" ' + \
+                'no corresponde a una gramática de operadores.')
+          return
+      # if it isn't non-terminal, it has to be terminal.
+      elif not check_terminal(current):
+        print(f'ERROR: La regla "{non_terminal} -> {rule_str}" ' + \
+                'no corresponde a una gramática de operadores.')
         return
-    # if it isn't non-terminal, it has to be terminal.
-    elif not check_terminal(current):
-      print(f'ERROR: La regla "{non_terminal} -> {rule_str}" ' + \
-              'no corresponde a una gramática de operadores.')
-      return
+      # it is terminal
+      else:
+        new_terminals[current] = True
+  else:
+    rule_str = 'lambda'
 
   # prints the result to the user  
   rules[rule_str] = non_terminal
   print(f'Regla {non_terminal} -> {rule_str} agregada a la gramática.')
+
+  global terminal_symbols
+  terminal_symbols = { **terminal_symbols, **new_terminals}
+  print('nuevos termianles', new_terminals)
 
 def set_init_symbol(args: list):
   """
@@ -215,6 +231,8 @@ def build_syntactic_analizer():
   for nod in nodes:
     nod.reset_max_path()
 
+  global f_g_functions
+  f_g_functions = {'f': {}, 'g': {}}
   try:
     # get the element in the node
     for nod in nodes:
@@ -234,6 +252,180 @@ def build_syntactic_analizer():
     func_values = f_g_functions[func]
     for symbol in func_values:
       print(f'  {symbol}: {func_values[symbol]}')
+
+def parse_string(args):
+  """
+  TODO;
+  """
+
+  # check if the syntactic analyzer has been created. 
+  # if not f_g_functions:
+  #   print('ERROR: aún no se ha construido el analizador sintáctico.')
+  #   return
+
+  global f_g_functions
+  f_g_functions = {
+    'f': {
+      '+': 3,
+      'e': 3,
+      '(': 0,
+      ')': 3,
+      '$': 1
+    },
+    'g': {
+      '+': 2,
+      'e': 4,
+      '(': 4,
+      ')': 0,
+      '$': 0
+    }
+  }
+
+  global rules
+  rules = {
+    '(E)': 'E',
+    'E+E': 'E',
+    'e': 'E'
+  }
+
+  global terminal_symbols
+  terminal_symbols = {
+    '(': True,
+    'e': True,
+    ')': True,
+    '+': True
+  }
+
+
+  # join args to get raw string
+  raw_str = ''.join(args)
+  print('raw: ', raw_str)
+
+  raw_str = raw_str.replace(' ', '')
+
+  chars = list(raw_str)
+  print('chars: ', chars)
+
+  undefined_symb = []
+  for elem in chars:
+    if not elem in terminal_symbols:
+      undefined_symb.append(elem)
+
+  if undefined_symb:
+    print('ERROR: Los siguientes símbolos no son terminales de la gramática: '+ \
+          str(undefined_symb))
+    return
+  
+  precedences_str = ['$', '<']
+
+  for index in range(0, len(chars) - 1):
+    current = chars[index]
+    precedences_str.append(current)
+    next_char = chars[index + 1]
+    f_current = f_g_functions['f'][current]
+    g_next = f_g_functions['g'][next_char]
+
+    if f_current < g_next:
+      precedences_str.append('<')
+    elif f_current > g_next:
+      precedences_str.append('>')
+    else:
+      precedences_str.append('=')
+
+  precedences_str += [chars[len(chars) - 1],  '>', '$']
+  print('precedences_str: ', precedences_str)
+
+  index = 1
+  stack = [precedences_str[0]]
+
+  print('=' * 95)
+  print('{:<25} {:^55}   {:<25}'.format('Pila', 'Entrada', 'Accion'))
+  print('=' * 95)
+
+
+  while True:
+    initial_index = index
+    initial_precedences_str = precedences_str.copy()
+    initial_stack = stack.copy()
+    if precedences_str[index] != '>':
+      index += 2
+      stack.append(precedences_str[index-1])
+      action = 'leer'
+    else:
+      start_index = index
+      while True:
+        if precedences_str[start_index - 2] != '<':
+          start_index -= 2
+        else:
+          start_index -= 1
+          symbol = precedences_str[start_index]
+          current = None
+          poped_elems = []
+          while current != symbol:
+            current = stack.pop()
+            poped_elems += current
+          break
+      
+      poped_str = ''.join(poped_elems)
+
+      if not poped_str in rules:
+        current = stack.pop()
+        poped_elems += current
+        poped_str = ''.join(poped_elems)
+
+      if not poped_str in rules:
+        action = f'rechazar, no se puede reducir por -> {poped_str}'
+        print_table_line(stack, precedences_str, initial_index, action)
+        return
+      else:
+        stack.append(rules[poped_str])
+        left = precedences_str[index-3]
+        right = precedences_str[index+1]
+        precedences_str = precedences_str[:index-2] + precedences_str[index+1:]
+        index -= 2
+
+        if left == '$' and right == '$':
+          action = f'reducir, {rules[poped_str]} -> {poped_str}'
+          print_table_line(initial_stack, initial_precedences_str, initial_index, action)
+          action = 'aceptar'
+          precedences_str.insert(1, ' ')
+          print_table_line(stack, precedences_str, 1, action)
+          return
+
+        f_left = f_g_functions['f'][left] 
+        g_right = f_g_functions['g'][right]
+        
+        if f_left < g_right:
+          symbol = '<'
+        elif f_left > g_right:
+          symbol = '>'
+        else:
+          symbol = '='
+        
+        precedences_str.insert(index, symbol)
+
+        action = f'reducir, {rules[poped_str]} -> {poped_str}'
+      
+    print_table_line(initial_stack, initial_precedences_str, initial_index, action)
+
+def custom_list_str(lst):
+  result = ''
+  for elem in lst:
+    result += str(elem) + ' '
+  return result[:-1]
+
+def print_table_line(stack, initial_precedences_str, initial_index, action):
+  input_str_left = custom_list_str(initial_precedences_str[:initial_index])  
+  input_str_symbol = initial_precedences_str[initial_index]
+  input_str_right = custom_list_str(initial_precedences_str[initial_index+1:])
+
+  print('{:<25} {:>20} {:^5} {:<30} {:<25}'.format(
+    custom_list_str(stack), 
+    input_str_left,
+    input_str_symbol,
+    input_str_right,
+    action
+  ))
 
 if __name__ == '__main__':
 
@@ -259,9 +451,11 @@ if __name__ == '__main__':
     elif tokens[0] == 'BUILD':
       build_syntactic_analizer()
     elif tokens[0] == 'PARSE':
-      print('parsing...')
+      parse_string(tokens[1:])
     elif tokens[0] == 'EXIT':
       print('¡Esperamos verlo de vuelta! :)')
       exit(0)
     else:
       print('Opción inválida. Por favor selecione una opción correcta.')
+
+# TODO: REVISAR REGLA A -> A + A
