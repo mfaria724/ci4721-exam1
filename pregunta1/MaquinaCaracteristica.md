@@ -31,7 +31,7 @@ I -> I . ; I {$, ;}
 ```
 
 **Avanzar:**
-;       => I4
+* `;       => I4`
 
 ### **I2**
 ```
@@ -43,8 +43,8 @@ I -> . I ; I {catch, ;}
 I -> . instr {catch, ;}
 ```
 
-**Avanzar* `:**
-I       =>` I5
+**Avanzar:**
+* `I       => I5`
 * `try     => I6`
 * `instr   => I7`
 
