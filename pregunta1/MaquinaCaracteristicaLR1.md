@@ -32,6 +32,7 @@ I -> I . ; I                      {$, ;}
 
 **Avanzar:**
 * `;       => I4`
+* `$       => I38`
 
 ### **I2**
 ```
@@ -506,3 +507,11 @@ I -> I . ; I                            {finally, ;, catch}
 **Conflicto:**
 - `Shift ;, Reduce I -> try I catch I finally I`
   * Resuelto con `Reduce I -> try I catch I finally I` ya que `finally` tiene mayor precedencia que `;`.
+
+### **I38**
+```
+S -> I $ .        {$}
+```
+
+**Avanzar:**
+None
