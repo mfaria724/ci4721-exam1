@@ -209,15 +209,15 @@ ACCCION:  reduce 4
 
 ```
 ENTRADA:  $
-PILA:     $ I0 I1 I4 I2 I5 I9 I12
-ACCCION:  reduce 2
+PILA:     $ I0 I1 I4 I2 I5 I9 I12 I4
+ACCCION: 
 ```
 
 #### PASO 25:
 
 ```
 ENTRADA:  $
-PILA:     $ I0 I1 I4 I8
+PILA:     $ I0 I1 I4 I2 I5 I9 I12 I4 I8
 ACCCION:  reduce 3
 ```
 
@@ -225,22 +225,30 @@ ACCCION:  reduce 3
 
 ```
 ENTRADA:  $
-PILA:     $ I0 I1
-ACCCION:  shift 
+PILA:     $ I0 I1 I4 I2 I5 I9 I12
+ACCCION:  reduce 2
 ```
 
 #### PASO 27:
 
 ```
-ENTRADA:  $ 
-PILA:     $ I0 I1 I38
-ACCCION:  reduce 0 
+ENTRADA:  $
+PILA:     $ I0 I1 I4 I8
+ACCCION:  reduce 4
 ```
 
 #### PASO 28:
 
 ```
 ENTRADA:  $
-PILA:     $ I0 
-ACCCION:  accept 
+PILA:     $ I0 I1
+ACCCION:  shift
+```
+
+#### PASO 29:
+
+```
+ENTRADA:  
+PILA:     $ I0 I1 I38
+ACCCION:  accept
 ```
