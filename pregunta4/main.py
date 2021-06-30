@@ -255,27 +255,122 @@ def build_syntactic_analizer():
 
 def parse_string(args):
   """
-  TODO;
+    This method is still WIP
   """
+  
+  # Descomenta esta línea si quieres cablear los valores de la gramática
+  # set_needed_values()
+  print('terminal_symbols: ', terminal_symbols)
 
-  # check if the syntactic analyzer has been created. 
-  # if not f_g_functions:
-  #   print('ERROR: aún no se ha construido el analizador sintáctico.')
-  #   return
+  tokens = list(''.join(args)) + ['$']
+  print('tokens: ', tokens)
+
+  input_tokens = tokens.copy()
+  stack = ['$']
+  
+  result = ['$', '<']
+  for i in range(1, len(tokens)):
+    prev = tokens[i-1]
+    current = tokens[i]
+
+    f_prev = f_g_functions['f'][prev]
+    g_current = f_g_functions['g'][current]
+
+    result.append(prev)
+    if f_prev < g_current:
+      result.append('<')
+    elif f_prev > g_current:
+      result.append('>')
+    else:
+      result.append('=')
+
+  result.append(tokens[-1])
+  tokens = result
+  print('tokens: ', tokens)
+
+  index = 1
+
+  while True:
+    try:
+      e = input_tokens[0]
+      p = stack[-1]
+      print('p:', p)
+      print('e:', e)
+    except:
+      print('rechazar')
+      return
+
+    if not p in terminal_symbols:
+      p = stack[-2]
+      print('new p:', p)
+
+    if p == '$' and e == '$':
+      print('aceptar')
+      return
+
+    f_p = f_g_functions['f'][p]
+    g_e = f_g_functions['g'][e]
+
+    print('f_p:', f_p)
+    print('g_e:', g_e)
+
+    if f_p <= g_e:
+      stack.append(e)
+      input_tokens = input_tokens[1:]
+      print('consumo')
+      index += 2
+      print('stack: ', stack)
+      print('input: ', input_tokens)
+    elif f_p > g_e:
+      loop = True
+      extract = []
+      print('stack: ', stack)
+      while loop:
+        x = stack.pop()
+        print('x: ', x)
+        extract.append(x)
+        print('extract: ', extract)
+        top = stack[-1]
+        print('top: ', top)
+
+        if top == '$':
+          loop = False
+
+        if not x in terminal_symbols or not top in terminal_symbols:
+          continue
+
+        f_top = f_g_functions['f'][top]
+        g_x = f_g_functions['g'][x]
+        loop = not f_top < g_x
+
+      print('extract: ', extract)
+      reduce_str = ''.join(extract[::-1])
+      print('reduce_str: ', reduce_str)
+
+      if not reduce_str in rules:
+        print('Rechazar')
+        return
+      else:
+        stack.append(rules[reduce_str])
+    else:
+      print('Error')
+      return
+
+def set_needed_values():
 
   global f_g_functions
   f_g_functions = {
     'f': {
-      '+': 3,
-      'e': 3,
+      '+': 2,
+      'e': 2,
       '(': 0,
-      ')': 3,
-      '$': 1
+      ')': 2,
+      '$': 0
     },
     'g': {
-      '+': 2,
-      'e': 4,
-      '(': 4,
+      '+': 1,
+      'e': 3,
+      '(': 3,
       ')': 0,
       '$': 0
     }
@@ -295,137 +390,6 @@ def parse_string(args):
     ')': True,
     '+': True
   }
-
-
-  # join args to get raw string
-  raw_str = ''.join(args)
-  print('raw: ', raw_str)
-
-  raw_str = raw_str.replace(' ', '')
-
-  chars = list(raw_str)
-  print('chars: ', chars)
-
-  undefined_symb = []
-  for elem in chars:
-    if not elem in terminal_symbols:
-      undefined_symb.append(elem)
-
-  if undefined_symb:
-    print('ERROR: Los siguientes símbolos no son terminales de la gramática: '+ \
-          str(undefined_symb))
-    return
-  
-  precedences_str = ['$', '<']
-
-  for index in range(0, len(chars) - 1):
-    current = chars[index]
-    precedences_str.append(current)
-    next_char = chars[index + 1]
-    f_current = f_g_functions['f'][current]
-    g_next = f_g_functions['g'][next_char]
-
-    if f_current < g_next:
-      precedences_str.append('<')
-    elif f_current > g_next:
-      precedences_str.append('>')
-    else:
-      precedences_str.append('=')
-
-  precedences_str += [chars[len(chars) - 1],  '>', '$']
-  print('precedences_str: ', precedences_str)
-
-  index = 1
-  stack = [precedences_str[0]]
-
-  print('=' * 95)
-  print('{:<25} {:^55}   {:<25}'.format('Pila', 'Entrada', 'Accion'))
-  print('=' * 95)
-
-
-  while True:
-    initial_index = index
-    initial_precedences_str = precedences_str.copy()
-    initial_stack = stack.copy()
-    if precedences_str[index] != '>':
-      index += 2
-      stack.append(precedences_str[index-1])
-      action = 'leer'
-    else:
-      start_index = index
-      while True:
-        if precedences_str[start_index - 2] != '<':
-          start_index -= 2
-        else:
-          start_index -= 1
-          symbol = precedences_str[start_index]
-          current = None
-          poped_elems = []
-          while current != symbol:
-            current = stack.pop()
-            poped_elems += current
-          break
-      
-      poped_str = ''.join(poped_elems)
-
-      if not poped_str in rules:
-        current = stack.pop()
-        poped_elems += current
-        poped_str = ''.join(poped_elems)
-
-      if not poped_str in rules:
-        action = f'rechazar, no se puede reducir por -> {poped_str}'
-        print_table_line(stack, precedences_str, initial_index, action)
-        return
-      else:
-        stack.append(rules[poped_str])
-        left = precedences_str[index-3]
-        right = precedences_str[index+1]
-        precedences_str = precedences_str[:index-2] + precedences_str[index+1:]
-        index -= 2
-
-        if left == '$' and right == '$':
-          action = f'reducir, {rules[poped_str]} -> {poped_str}'
-          print_table_line(initial_stack, initial_precedences_str, initial_index, action)
-          action = 'aceptar'
-          precedences_str.insert(1, ' ')
-          print_table_line(stack, precedences_str, 1, action)
-          return
-
-        f_left = f_g_functions['f'][left] 
-        g_right = f_g_functions['g'][right]
-        
-        if f_left < g_right:
-          symbol = '<'
-        elif f_left > g_right:
-          symbol = '>'
-        else:
-          symbol = '='
-        
-        precedences_str.insert(index, symbol)
-
-        action = f'reducir, {rules[poped_str]} -> {poped_str}'
-      
-    print_table_line(initial_stack, initial_precedences_str, initial_index, action)
-
-def custom_list_str(lst):
-  result = ''
-  for elem in lst:
-    result += str(elem) + ' '
-  return result[:-1]
-
-def print_table_line(stack, initial_precedences_str, initial_index, action):
-  input_str_left = custom_list_str(initial_precedences_str[:initial_index])  
-  input_str_symbol = initial_precedences_str[initial_index]
-  input_str_right = custom_list_str(initial_precedences_str[initial_index+1:])
-
-  print('{:<25} {:>20} {:^5} {:<30} {:<25}'.format(
-    custom_list_str(stack), 
-    input_str_left,
-    input_str_symbol,
-    input_str_right,
-    action
-  ))
 
 if __name__ == '__main__':
 
@@ -457,5 +421,3 @@ if __name__ == '__main__':
       exit(0)
     else:
       print('Opción inválida. Por favor selecione una opción correcta.')
-
-# TODO: REVISAR REGLA A -> A + A
